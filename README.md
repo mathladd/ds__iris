@@ -1,6 +1,6 @@
 # ds__iris
 
-This project contains data science functions through statistical_tool.py that helps automatically clean and test statistical learning models (linear/polynomial/regularized regression, logistic regression etc..) on provided datasets, then determine best fit models with cross-validated lowest MSE scores (balancing tradeoff between bias and variance)
+This project contains data science functions in statistical_tool.py that helps automatically clean provided datasets and test statistical learning models (linear/polynomial/regularized regression, logistic regression etc..) on them, then determine best fit models with cross-validated lowest MSE scores (balancing tradeoff between bias and variance)
 
 The project uses scikit-learn and statsmodels to apply its statistical learning models
 
