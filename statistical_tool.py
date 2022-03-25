@@ -1,3 +1,14 @@
+"""
+data processing and analysis with Python
+==================================
+
+statistical_tool.py provides comprehensive tools to clean, process,
+and perform data science/statistical learning on a provided dataset
+
+Made by: Duy Nguyen (github.com/mathladd)
+
+"""
+
 import statsmodels.api as sm
 import statsmodels.tools.eval_measures as smte
 import statsmodels.tools.sm_exceptions as sm_except
@@ -22,7 +33,6 @@ import os
 import warnings
 import gc
 
-
 pd.set_option('display.expand_frame_repr', False)
 
 plt.rcParams.update({'font.size': 8})
@@ -32,25 +42,23 @@ warnings.simplefilter("ignore", category=ConvergenceWarning)
 warnings.simplefilter("ignore", category=sm_except.ConvergenceWarning)
 
 
-# 1. ********************************************* GLOBAL KEYS **************************************************** #
-"""MASTER SETTINGS"""
-CURRENT_FILE_LINK = r'linkToCleanDataset.csv'
-FRAC = 1                            # OPTIMIZATION: Get sample of a fraction of the data
-VARIABLE_TYPES = {
+# ************************** GLOBAL SETTINGS: START HERE *****************************************
+# ---------------- GENERAL SETTINGS ----------------
+LINK_TO_DAT = r'linkToACleanDataset.csv'    # link to data you want to clean and do analysis on
+FRAC = 1  # OPTIMIZATION: Get sample of a fraction of the data
+ALL_FEATURE_TYPES = {
 
-}                                   # OPTIMIZATION: Customize each feature's type in a dictionary 
-                                        # (e.g. {'a': np.float64}) to reduce memory usage
-INDEX_SHEET = 0                     # For excel files only. Set index of sheet to be read
+}  # OPTIMIZATION: Customize each feature's type in a dictionary (e.g. {'a': np.float64}) to reduce memory usage
+EXCEL_SHEET_INDEX = 0  # For excel files only. Set index of sheet to be read
 
-
-"""PRE-PROCESSING SETTINGS"""
+# ---------------- DATA PROCESSING SETTINGS ----------------
 LIST_TO_DATETIME = [
 
 ]  # List of features to be converted to datetime
 LIST_TO_STANDARDIZE = [
 
 ]  # List of features to be standardized (x = (x-mean)/sigma), or...
-ALL_STANDARDIZES = False  # Standardize all possible numeric features
+BOOLEAN_STANDARDIZE_ALL_NUMERIC = False  # Standardize all possible numeric features
 LIST_OF_INTERACTIONS = [
 
 ]  # List of interactions to add e.g. ['Age:Fare', 'Age:Health'], or...
@@ -58,15 +66,14 @@ ALL_INTERACTIONS = False  # Add all possible interactions
 DICT_OF_POLIES = {
 
 }  # Dict of features and degrees to add e.g. {'Age':3} (y = a + Age + Age^2 + Age^3), or...
-ALL_POLIES = 1  # Power up all features to n degree
+ALL_POLY_DEGREES = 1  # Power up all features to n degree
 LIST_TO_DROP = [
 
 ]  # List of variables to be dropped e.g. ['Unnamed: 0', 'col20']
 
-
-"""MODEL SETTINGS"""
-REGRESSION = True                   # Set True if you want to do regression analyses
-CLASSIFICATION = False              # Set True if you want to do classification analyses
+# ---------------- MODEL SETTINGS ----------------
+REGRESSION = True  # Set True if you want to do regression analyses
+CLASSIFICATION = False  # Set True if you want to do classification analyses
 TARGET_NAME = ''  # The dependent/target name, if not set, will be prompted during modeling
 ALPHA = 0.05  # For confidence interval
 CV = 10  # Set to 1 to eliminate cross validation. Set to n to do LOOCV
@@ -80,20 +87,21 @@ L1_RATIO = 0.5  # Set to 1 to perform purely lasso regularization, 0 for pure ri
 # Quad test
 QUAD_TEST_TO_DEGREE = 3  # Degree to quad test to (regression: lowest MSE; classification: highest accuracy)
 
-# Regression settings
-
-
 # Classification settings
 LIST_OF_CLASS_WEIGHTS = []
 N_NEIGHBORS = 10  # Number of neighbors for K-nearest neighbors classifier
 
 
-# ************************************************** SETUPS ******************************************************* #
-def main(current_file_link):
-    df, not_csv_alerts = proc_import(main_file_link=current_file_link, 
-                                     excel_sheet_index=INDEX_SHEET,
-                                     frac=FRAC, 
-                                     all_feature_types=VARIABLE_TYPES)
+# ************************************************** MAIN *******************************************************
+def main(link_to_dat, excel_sheet_index, frac, all_feature_types,
+         list_to_standardize, boolean_standardize_all_numeric, list_to_datetime,            # data processing
+         regression, list_to_drop, dict_of_poly, list_of_interactions, all_interactions,    # regression
+         all_poly_degrees, cv, l1_ratio, penalty, quad_test_to_degree, display_graph,       # regression (cont.)
+         classification, list_of_class_weights, individual_feature_analysis, n_neighbors):
+    df, not_csv_alerts = df_import(link_to_dat=link_to_dat,
+                                   excel_sheet_index=excel_sheet_index,
+                                   frac=frac,
+                                   all_feature_types=all_feature_types)
     if df.empty:
         print('Empty dataframe.')
         return
@@ -103,13 +111,16 @@ def main(current_file_link):
     df.dropna(how='all', axis=0, inplace=True)
     df.dropna(how='all', axis=1, inplace=True)
     df.reset_index(drop=True, inplace=True)
-    proc_display_raw(df)
-    df, dfs_to_export = proc_process(df)
-    x, y = proc_analysis(df_input=df, target_name=target_name, current_file_link=current_file_link,
-                         not_csv_alerts=not_csv_alerts, dfs_to_export=dfs_to_export,
-                         list_to_standardize=LIST_TO_STANDARDIZE,
-                         boolean_standardize_all_numeric=ALL_STANDARDIZES,
-                         list_to_datetime=LIST_TO_DATETIME)
+    df_display_raw(df)
+    df, dfs_to_export = df_process(df)
+    x, y = df_analysis(df_input=df,
+                       target_name=target_name,
+                       link_to_dat=link_to_dat,
+                       not_csv_alerts=not_csv_alerts,
+                       dfs_to_export=dfs_to_export,
+                       list_to_standardize=list_to_standardize,
+                       boolean_standardize_all_numeric=boolean_standardize_all_numeric,
+                       list_to_datetime=list_to_datetime)
     gc.collect()
 
     # --------------------------------------------- REGRESSION ------------------------------------------------------- #
@@ -124,13 +135,13 @@ def main(current_file_link):
     #   6. Is the relationship linear? (use studentized residual spot trend & outliers)                                #
     #                                                                                                                  #
     # --------------------------------------------- REGRESSION ------------------------------------------------------- #
-    if REGRESSION:
+    if regression:
         print(make_title('REGRESSION'))
         regression_x = x.copy()
         error_check, transformation_done = transform_main(
-            x=regression_x, list_of_drop=LIST_TO_DROP, dict_of_poly=DICT_OF_POLIES,
-            list_of_interactions=LIST_OF_INTERACTIONS,
-            all_interactions=ALL_INTERACTIONS, all_poly_degree=ALL_POLIES
+            x=regression_x, list_to_drop=list_to_drop, dict_of_poly=dict_of_poly,
+            list_of_interactions=list_of_interactions,
+            all_interactions=all_interactions, all_poly_degrees=all_poly_degrees
         )
 
         if error_check:
@@ -141,26 +152,20 @@ def main(current_file_link):
             print(transformation_done)
 
         regression_main(
-            x=regression_x, y=y, cv=CV, l1_ratio=L1_RATIO, penalty=PENALTY,
-            individual_feature_analysis=True, quad_test_to_degree=QUAD_TEST_TO_DEGREE, display_graph=DISPLAY_GRAPH
+            x=regression_x, y=y, cv=cv, l1_ratio=l1_ratio, penalty=penalty,
+            individual_feature_analysis=True, quad_test_to_degree=quad_test_to_degree, display_graph=display_graph
         )
     del regression_x
     gc.collect()
 
     # ---------------------------------------------- CLASSIFICATION -------------------------------------------------- #
-    #  Questions to ask:                                                                                               #
-    #                                                                                                                  #
-    #                                                                                                                  #
-    #                                                                                                                  #
-    #                                                                                                                  #
-    # ---------------------------------------------- CLASSIFICATION -------------------------------------------------- #
-    if CLASSIFICATION:
+    if classification:
         print(f"\n{make_title('CLASSIFICATION')}")
         classification_x = x.copy()
         error_check, transformation_done = transform_main(
-            x=classification_x, list_of_drop=LIST_TO_DROP, dict_of_poly=DICT_OF_POLIES,
-            list_of_interactions=LIST_OF_INTERACTIONS,
-            all_interactions=ALL_INTERACTIONS, all_poly_degree=ALL_POLIES
+            x=classification_x, list_to_drop=list_to_drop, dict_of_poly=dict_of_poly,
+            list_of_interactions=list_of_interactions,
+            all_interactions=all_interactions, all_poly_degrees=all_poly_degrees
         )
 
         if error_check:
@@ -172,50 +177,60 @@ def main(current_file_link):
 
         classification_main(
             x=classification_x, y=y, cv=CV,
-            weights_list=LIST_OF_CLASS_WEIGHTS, interpretation_with_sm=True,
-            individual_feature_analysis=INDIVIDUAL_FEATURE_ANALYSIS,
-            quad_test_to_degree=QUAD_TEST_TO_DEGREE, n_neighbors=N_NEIGHBORS,
-            display_graph=DISPLAY_GRAPH
-        )
+            list_of_class_weights=list_of_class_weights, interpretation_with_sm=True,
+            individual_feature_analysis=individual_feature_analysis,
+            quad_test_to_degree=quad_test_to_degree, n_neighbors=n_neighbors,
+            display_graph=display_graph)
 
     print('\nEnd of program.')
 
 
-# 2. ********************************************* ALL FUNCTIONS **************************************************** #
-def proc_process(df):
-    """1. DATA CLEANING: PIVOT/UNPIVOT, NaN/REDUNDANCIES, INCONSISTENCY, MERGE/CONCATENATE, FILTER, QUALITATIVE"""
-    # ------------------------- Code here ------------------------- #
+# ********************************************* FUNCTIONS ****************************************************
+def df_process(df):
+    """ Custom user-added data processing """
+    # 1. DATA CLEANING:
+    #       PIVOT/UNPIVOT,
+    #       NaN/REDUNDANCIES,
+    #       INCONSISTENCY,
+    #       MERGE/CONCATENATE,
+    #       FILTER,
+    #       QUALITATIVE
+    # ------------------------- custom processing here ------------------------- #
     #
-    df.drop('Unnamed: 0', axis=1, inplace=True)
+    df = df.drop('Unnamed: 0', axis=1)
     #
-    # ----------------------- End code here ----------------------- #
-    """2. EVALUATION: CALCULATED COLUMNS, GROUP BY, MAKING AND PRINTING CUSTOM CALCULATIONS"""
-    # ------------------------- Code here ------------------------- #
+    # ----------------------- End of custom processing ----------------------- #
+    # 2. EVALUATION:
+    #       CALCULATED COLUMNS,
+    #       GROUP BY,
+    #       MAKING AND PRINTING CUSTOM CALCULATIONS
+    # ------------------------- custom calculations here ------------------------- #
     #
 
     #
-    # ----------------------- End code here ----------------------- #
+    # ----------------------- End of custom calculations ----------------------- #
     dfs_to_export = []  # Add dfs to be exported here (e.g. df1, df2...)
     return df, dfs_to_export
 
 
-# II. Data input/output functions
-def proc_import(main_file_link, excel_sheet_index, frac, all_feature_types):
-    print(f'\nReading: {main_file_link}')
+def df_import(link_to_dat, excel_sheet_index, frac, all_feature_types):
+    """ Imports data from provided link (also accomodates excel files) """
+
+    print(f'\nReading: {link_to_dat}')
     file_unique_display = ''
-    file_size = os.stat(main_file_link).st_size
+    file_size = os.stat(link_to_dat).st_size
     if not all_feature_types:
         all_feature_types = None
 
     # Read csv or txt
-    if main_file_link.find('.csv') != -1 or main_file_link.find('.txt') != -1:
+    if link_to_dat.find('.csv') != -1 or link_to_dat.find('.txt') != -1:
 
-        dask_df = dd.read_csv(main_file_link, dtype=all_feature_types)
+        dask_df = dd.read_csv(link_to_dat, dtype=all_feature_types)
         # read multiple files: dask_dfs = dd.read_csv('data_path/2014-*.csv')
         # export dask_df to single csv: dask_df.to_csv('path/to/csv.csv', single_file=True)
 
         if file_size > 1000000000:
-            print('File is too large. Please go to def proc_import to perform MapReduce with Dask.')
+            print('File is too large. Please try df_import() to perform MapReduce with Dask.')
             print(f'\nNumber of variables: {len(dask_df.columns)}')
             print(f'Sample:\n{dask_df.head()}')
             print('\nCreating the Client...')
@@ -224,7 +239,7 @@ def proc_import(main_file_link, excel_sheet_index, frac, all_feature_types):
 
             if frac < 1:
                 dask_df = dask_df.sample(frac=frac)
-                print(f'Returning {int(frac*100)}% of data')
+                print(f'Returning {int(frac * 100)}% of data')
 
             # -------------------------------- MAP REDUCING STARTS --------------------------------------
             # dask_df = dask_df[['NETWORK', CHANNEL]]
@@ -233,20 +248,14 @@ def proc_import(main_file_link, excel_sheet_index, frac, all_feature_types):
             # dask_df = dask_df.assign(Z = dask_df["X"] + dask_df["Y"]) --> Add calculated col
             # dask_df = dask_df[dask_df["X"] > 0]                       --> Choose only rows with value in col "X" > 0
             # dask_df = dask_df.sample(frac=0.005)                      --> Sampling the data for faster loading
-            #
-            #
 
-            #
-            #
             # -------------------------------- MAP REDUCING ENDS ----------------------------------------
             dask_df = client.persist(dask_df)  # Store df into cluster's memory (note: cluster must have enough RAM)
             print('Finished map reducing. Printing additional computations...')
+
             # ---------------------------- CUSTOM HIGH-LEVEL COMPUTATIONS -----------------------------
             # print(dask_df['NUMBERS_USER'].sum().compute())
-            #
 
-            #
-            #
             # -------------------------------- COMPUTATIONS ENDS ----------------------------------------
             print('[Ended high-level query]')
             df = dask_df.compute().reset_index(drop=True)  # Store df into single machine's RAM !!
@@ -256,16 +265,16 @@ def proc_import(main_file_link, excel_sheet_index, frac, all_feature_types):
             df = dask_df.compute().reset_index(drop=True)
 
     # Read excel files
-    elif (main_file_link.find('.xlsx') or main_file_link.find('.xls')) != -1:
-        df = pd.read_excel(main_file_link, sheet_name=excel_sheet_index, dtype=all_feature_types)
-        sheet_names_list = pd.ExcelFile(main_file_link).sheet_names
+    elif (link_to_dat.find('.xlsx') or link_to_dat.find('.xls')) != -1:
+        df = pd.read_excel(link_to_dat, sheet_name=excel_sheet_index, dtype=all_feature_types)
+        sheet_names_list = pd.ExcelFile(link_to_dat).sheet_names
         file_unique_display = \
-            f"{'%-100s' % f'|  Displaying sheet: {str(excel_sheet_index + 1)}/{len(sheet_names_list)}'}|\n"\
+            f"{'%-100s' % f'|  Displaying sheet: {str(excel_sheet_index + 1)}/{len(sheet_names_list)}'}|\n" \
             f"{'%-100s' % f'|  List of sheets: {str(sheet_names_list)}'}|\n"
 
     # Read hdf
-    elif main_file_link.find('.hdf') != -1:
-        df = pd.read_hdf(main_file_link, key='test', dtype=all_feature_types)
+    elif link_to_dat.find('.hdf') != -1:
+        df = pd.read_hdf(link_to_dat, key='test', dtype=all_feature_types)
 
     # Unknown file type
     else:
@@ -275,8 +284,8 @@ def proc_import(main_file_link, excel_sheet_index, frac, all_feature_types):
     return df, file_unique_display
 
 
-def proc_export(dfs_to_export, list_link_to_original_df_folder, name_of_original_df):
-    """
+def df_export(dfs_to_export, list_link_to_original_df_folder, name_of_original_df):
+    """ Exports processed df files
     :param dfs_to_export: All dfs to be exported
     :param list_link_to_original_df_folder: Link to original folder holding master df as list of folder names
     :param name_of_original_df: Name of orignal df all dfs_to_export derived from
@@ -315,20 +324,22 @@ def proc_export(dfs_to_export, list_link_to_original_df_folder, name_of_original
             export_sheet_index = 1
             while export_sheet_index < len(dfs_to_export):
                 with pd.ExcelWriter(export_link, mode='a') as writer:
-                    dfs_to_export[export_sheet_index]\
+                    dfs_to_export[export_sheet_index] \
                         .to_excel(writer, sheet_name=f'REPORT {str(export_sheet_index)}', index=False)
                 export_sheet_index += 1
             print(f'Exported: {current_xlsx_file_name}')
 
 
-def proc_display_raw(df):
+def df_display_raw(df):
+    """ Display df pre-processing """
     print('\n[RAW DATA FRAME DISPLAY])')
     print(df)
     print('[END OF RAW]')
 
 
-def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_to_export, list_to_standardize,
-                  boolean_standardize_all_numeric, list_to_datetime):
+def df_analysis(df_input, target_name, link_to_dat, not_csv_alerts, dfs_to_export, list_to_standardize,
+                boolean_standardize_all_numeric, list_to_datetime):
+    """ data analysis (regression and classification) """
     df = df_input.copy()
     all_feature_names = tuple(df.columns)
     number_of_features = len(all_feature_names)
@@ -369,7 +380,7 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
                     flag_date_fail = True
             else:
                 flag_date_fail = True
-            if num_of_uniques < int(past_number_of_observations/2) and flag_date_fail:
+            if num_of_uniques < int(past_number_of_observations / 2) and flag_date_fail:
                 df[current_feature_name] = df[current_feature_name].astype('category')
                 all_dtypes[current_feature_index] = 'category'
                 current_feature_dtype = 'cat'
@@ -436,8 +447,7 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
             describe_mode_freq_percent = round(describe[3] / past_number_of_observations * 100, 1)
             min_date = describe[4]
             max_date = describe[5]
-            if len(df[current_feature_name][pd.notnull(df[current_feature_name])]
-                    .dt.hour.unique()) == 1:
+            if len(df[current_feature_name][pd.notnull(df[current_feature_name])].dt.hour.unique()) == 1:
                 flag_no_time = True
             if flag_no_time:
                 describe_mode = str(describe_mode.date())
@@ -469,16 +479,16 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
 
         # Creating unique show
         if len(all_uniques_as_string) < unique_display_width:
-            unique_show = f'{all_uniques_as_string[:unique_display_half-5]}' \
-                          f'{all_uniques_as_string[unique_display_half-5:]}'
+            unique_show = f'{all_uniques_as_string[:unique_display_half - 5]}' \
+                          f'{all_uniques_as_string[unique_display_half - 5:]}'
         else:
-            unique_show = f'{all_uniques_as_string[:unique_display_half-5]} ... ' \
-                          f'{all_uniques_as_string[-unique_display_half+5:]}'
+            unique_show = f'{all_uniques_as_string[:unique_display_half - 5]} ... ' \
+                          f'{all_uniques_as_string[-unique_display_half + 5:]}'
 
         # Summarizing each variable
         current_feature_unique_report = (flag_problem, current_feature_name, current_feature_dtype,
                                          num_of_uniques, uniques_sorted,
-                                         ('%-' + str(unique_display_width-5) + 's') % unique_show)
+                                         ('%-' + str(unique_display_width - 5) + 's') % unique_show)
         current_feature_characteristics_report = (flag_problem, current_feature_name, percent_nan,
                                                   current_feature_dtype, num_of_uniques,
                                                   description[0], float(description[1]), sum_num,
@@ -518,14 +528,14 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
         print(f'All dtypes: {dict(zip(all_feature_names, all_dtypes))}')
         print('\n' + '\t' * 12 + '---End---')
 
-    link_to_folder = current_file_link.split('\\')
+    link_to_folder = link_to_dat.split('\\')
     name_of_current_file = link_to_folder.pop(-1)
     name_of_current_file_splitted = name_of_current_file.split('.')
     name_of_current_file = name_of_current_file_splitted[0]
     current_file_type = name_of_current_file_splitted[1]
 
     # Printing overview of all files in system
-    print(f'\n\n{current_file_link}')
+    print(f'\n\n{link_to_dat}')
     print(f" {'-' * 99}\n"
           f"{'%-100s' % f'|  Current file: {name_of_current_file}'}|\n"
           f"{'%-100s' % f'|  File type: {current_file_type}'}|\n"
@@ -533,9 +543,9 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
           f" {'-' * 99}\n")
 
     # Check for export call
-    proc_export(dfs_to_export=dfs_to_export,
-                list_link_to_original_df_folder=link_to_folder,
-                name_of_original_df=name_of_current_file)
+    df_export(dfs_to_export=dfs_to_export,
+              list_link_to_original_df_folder=link_to_folder,
+              name_of_original_df=name_of_current_file)
 
     # Specifying the dependent
     target_index = 0
@@ -564,7 +574,7 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
     print(f'\nTarget has been set as [{target_name}] for modeling.')
     if dependent_mapping:
         print(dependent_mapping)
-    proc_scatter_matrix(df)
+    df_scatter_matrix(df)
     gc.collect()
 
     # *********************** FURTHER DATA TRUNCATING + PRELIMINARY GRAPHING FOR ANALYSIS *************************** #
@@ -627,7 +637,8 @@ def proc_analysis(df_input, target_name, current_file_link, not_csv_alerts, dfs_
     return features, target
 
 
-def proc_scatter_matrix(df):
+def df_scatter_matrix(df):
+    """ Prints out scatter-matrix for the data with matplotlib """
     graph_vars_input = input('Scatter matrix the data? (y/n): ')
     if graph_vars_input == 'y' or graph_vars_input == 'Y':
         feature_name_to_be_colored = ''
@@ -667,13 +678,14 @@ def proc_scatter_matrix(df):
         plt.close('all')
 
 
-def proc_set_row_as_header(df, header_row_index):
+def df_set_row_as_header(df, header_row_index):
+    """ set provided df's row as header """
     df.columns = df.iloc[header_row_index]
     df.drop(header_row_index, axis=0, inplace=True)
 
 
-# III. Data processing
 def vars_unpivot(df, vars_to_unpivot, unpivot_column_name='Unpivot', unpivot_value_column_name='Value'):
+    """ unpivot df """
     df_unpivot = pd.melt(df,
                          id_vars=tuple(df.drop(vars_to_unpivot, axis=1).columns),
                          var_name=unpivot_column_name,
@@ -682,11 +694,13 @@ def vars_unpivot(df, vars_to_unpivot, unpivot_column_name='Unpivot', unpivot_val
 
 
 def var_pivot(df, name_of_column_to_be_pivot):
+    """ pivot df """
     df_pivot = pd.pivot(df, None, name_of_column_to_be_pivot)
     return df_pivot
 
 
 def vars_one_hot(df, list_of_column_names):
+    """ one hot categorical features (if provided) """
     base_categories = []
     for column in list_of_column_names:
         dummies = pd.get_dummies(df[column], prefix=column, dtype='int8')
@@ -709,6 +723,7 @@ def generator_from_list(list_of_items_to_generate):
 
 
 def make_title(text_in_middle):
+    """ make titles clearer and prettier """
     return f"{'<' * 80} {text_in_middle} {'>' * 100}"
 
 
@@ -717,15 +732,14 @@ def format_string_length(string, length, string_type='s'):
     return string
 
 
-# IV. MODELING
-def transform_main(x, list_of_drop, dict_of_poly, list_of_interactions,
-                   all_interactions, all_poly_degree):
-
+def transform_main(x, list_to_drop, dict_of_poly, list_of_interactions,
+                   all_interactions, all_poly_degrees):
+    """ data transforms according to user's provided settings """
     error_check = False
     transformations_done = []
 
-    if list_of_drop or dict_of_poly or list_of_interactions or all_interactions or \
-            all_poly_degree > 1:
+    if list_to_drop or dict_of_poly or list_of_interactions or all_interactions or \
+            all_poly_degrees > 1:
 
         poly_error = bool
         interaction_error = bool
@@ -737,8 +751,8 @@ def transform_main(x, list_of_drop, dict_of_poly, list_of_interactions,
             transformations_done.append('add poly')
 
         # Add ALL possible polinomials (bringing the equation to quadratic form, only works if polies are not specified)
-        if not poly_error and all_poly_degree > 1 and not dict_of_poly:
-            transform_add_all_poly(x, all_poly_degree)
+        if not poly_error and all_poly_degrees > 1 and not dict_of_poly:
+            transform_add_all_poly(x, all_poly_degrees)
             transformations_done.append('add all poly')
 
         # Add interactions
@@ -752,8 +766,8 @@ def transform_main(x, list_of_drop, dict_of_poly, list_of_interactions,
             transformations_done.append('add all interactions')
 
         # Dropping specified variables
-        if not interaction_error and not poly_error and list_of_drop:
-            dropping_error = transform_drop_vars(x, list_of_drop)
+        if not interaction_error and not poly_error and list_to_drop:
+            dropping_error = transform_drop_vars(x, list_to_drop)
             transformations_done.append('dropped custom variables')
 
         error_check = interaction_error and poly_error and dropping_error or False
@@ -762,6 +776,7 @@ def transform_main(x, list_of_drop, dict_of_poly, list_of_interactions,
 
 
 def transform_add_interactions(x, list_of_interactions):
+    """ data transform adding provided feature interactions """
     for interaction in list_of_interactions:
         try:
             splitted_interact = interaction.split(':')
@@ -773,6 +788,7 @@ def transform_add_interactions(x, list_of_interactions):
 
 
 def transform_add_all_interactions(x):
+    """ data transform adding ALL feature interactions """
     original_x_len = len(x.columns)
     for var in range(0, original_x_len):
         for next_var in range(var + 1, original_x_len):
@@ -781,6 +797,7 @@ def transform_add_all_interactions(x):
 
 
 def transform_add_poly(x, dict_of_polies):
+    """ data transform adding provided features with polynomial """
     if dict_of_polies:
         for feature_name, feature_degree in dict_of_polies.items():
             current_feature_name = feature_name
@@ -794,6 +811,7 @@ def transform_add_poly(x, dict_of_polies):
 
 
 def transform_add_all_poly(x, degree):
+    """ data transform adding polynomials for ALL existing features """
     original_x_len = len(x.columns)
     for var_index in range(0, original_x_len):
         for degree_level in range(2, degree + 1):
@@ -802,6 +820,7 @@ def transform_add_all_poly(x, degree):
 
 
 def transform_drop_vars(x, list_of_vars_to_drop):
+    """ data transform dropping provided list of features """
     if list_of_vars_to_drop:
         try:
             x.drop(list_of_vars_to_drop, axis=1, inplace=True)
@@ -813,6 +832,7 @@ def transform_drop_vars(x, list_of_vars_to_drop):
 
 # LINEAR REGRESSION
 def regression_main(x, y, cv, l1_ratio, penalty, individual_feature_analysis, quad_test_to_degree, display_graph):
+    """ regression, main ops """
     x_with_const = sm.add_constant(x)
 
     # Linear regression for each individual variable (included interactions)
@@ -876,6 +896,7 @@ def regression_main(x, y, cv, l1_ratio, penalty, individual_feature_analysis, qu
 
 
 def regression_individuals_simple(x, y):
+    """ regression simple """
     x_with_const = sm.add_constant(x)
     individual_simple_reports = []
     for current_var in x.columns:
@@ -889,6 +910,7 @@ def regression_individuals_simple(x, y):
 
 
 def regression_cv_simple(x, y, cv):
+    """ regression simple, cross-validated """
     cv_mse = 0
     np_x = x.values
     np_y = y.values
@@ -907,6 +929,7 @@ def regression_cv_simple(x, y, cv):
 
 
 def regression_cv_regular(x, y, cv, l1_ratio, penalty):
+    """ regression cross validated with regularization """
     penalty_ = None
     if penalty != 0:
         penalty_ = np.full(shape=cv, fill_value=penalty)
@@ -918,6 +941,7 @@ def regression_cv_regular(x, y, cv, l1_ratio, penalty):
 
 
 def regression_cv_quad_test(x, y, cv, l1_ratio, optimal_penalty, quad_test_to_degree):
+    """ regression cross validated with quad test """
     if quad_test_to_degree >= 1:
         cv_mse_quad_simple_list = []
         cv_mse_quad_regular_list = []
@@ -947,6 +971,7 @@ def regression_cv_quad_test(x, y, cv, l1_ratio, optimal_penalty, quad_test_to_de
 
 
 def regression_analysis_simple(model_simple, display_graph):
+    """ Analysis of simple regression to find outliers """
     if display_graph:
         studentized_residual_simple = model_simple.get_influence().resid_studentized_external
         fitted_values_simple = model_simple.fittedvalues
@@ -965,10 +990,11 @@ def regression_analysis_simple(model_simple, display_graph):
 
 
 # CLASSIFICATION
-def classification_main(x, y, cv, weights_list, interpretation_with_sm, individual_feature_analysis,
+def classification_main(x, y, cv, list_of_class_weights, interpretation_with_sm, individual_feature_analysis,
                         quad_test_to_degree, n_neighbors, display_graph):
+    """ classification, main ops """
     # Weight converting
-    weights_dict = classification_assigning_weights(y=y, weights_list=weights_list)
+    weights_dict = classification_assigning_weights(y=y, list_of_class_weights=list_of_class_weights)
 
     # Model initiations
     model_one_vs_rest = LogisticRegression(multi_class='ovr',
@@ -1041,10 +1067,11 @@ def classification_main(x, y, cv, weights_list, interpretation_with_sm, individu
         plt.show()
 
 
-def classification_assigning_weights(y, weights_list):
+def classification_assigning_weights(y, list_of_class_weights):
+    """ classification, assigning weights to different classes of the target """
     labels_list = y.unique()
-    if weights_list and len(weights_list) == len(labels_list):
-        class_weight = dict(zip(labels_list, weights_list))
+    if list_of_class_weights and len(list_of_class_weights) == len(labels_list):
+        class_weight = dict(zip(labels_list, list_of_class_weights))
     else:
         class_weight = 'balanced'
     return class_weight
@@ -1210,4 +1237,17 @@ def classification_confusion_matrix(labels, pred_labels, all_names_not_categoriz
 
 # ***************** MAIN CODE ******************************** #
 if __name__ == '__main__':
-    main(current_file_link=CURRENT_FILE_LINK)
+    main(link_to_dat=LINK_TO_DAT,
+         excel_sheet_index=EXCEL_SHEET_INDEX,
+         frac=FRAC,
+         all_feature_types=ALL_FEATURE_TYPES,
+         list_to_standardize=LIST_TO_STANDARDIZE,
+         boolean_standardize_all_numeric=BOOLEAN_STANDARDIZE_ALL_NUMERIC,
+         list_to_datetime=LIST_TO_DATETIME,
+         regression=REGRESSION, list_to_drop=LIST_TO_DROP, dict_of_poly=DICT_OF_POLIES,
+         list_of_interactions=LIST_OF_INTERACTIONS,
+         all_interactions=ALL_INTERACTIONS, all_poly_degrees=ALL_POLY_DEGREES,
+         cv=CV, l1_ratio=L1_RATIO, penalty=PENALTY,
+         quad_test_to_degree=QUAD_TEST_TO_DEGREE, display_graph=DISPLAY_GRAPH,
+         classification=CLASSIFICATION, list_of_class_weights=LIST_OF_CLASS_WEIGHTS,
+         individual_feature_analysis=INDIVIDUAL_FEATURE_ANALYSIS, n_neighbors=N_NEIGHBORS)
