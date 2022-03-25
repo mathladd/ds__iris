@@ -23,10 +23,77 @@ import warnings
 import gc
 
 
+pd.set_option('display.expand_frame_repr', False)
+
+plt.rcParams.update({'font.size': 8})
+warnings.simplefilter("ignore", category=RuntimeWarning)
+warnings.simplefilter("ignore", category=FutureWarning)
+warnings.simplefilter("ignore", category=ConvergenceWarning)
+warnings.simplefilter("ignore", category=sm_except.ConvergenceWarning)
+
+
+# 1. ********************************************* GLOBAL KEYS **************************************************** #
+"""MASTER SETTINGS"""
+CURRENT_FILE_LINK = r'linkToCleanDataset.csv'
+FRAC = 1                            # OPTIMIZATION: Get sample of a fraction of the data
+VARIABLE_TYPES = {
+
+}                                   # OPTIMIZATION: Customize each feature's type in a dictionary 
+                                        # (e.g. {'a': np.float64}) to reduce memory usage
+INDEX_SHEET = 0                     # For excel files only. Set index of sheet to be read
+
+
+"""PRE-PROCESSING SETTINGS"""
+LIST_TO_DATETIME = [
+
+]  # List of features to be converted to datetime
+LIST_TO_STANDARDIZE = [
+
+]  # List of features to be standardized (x = (x-mean)/sigma), or...
+ALL_STANDARDIZES = False  # Standardize all possible numeric features
+LIST_OF_INTERACTIONS = [
+
+]  # List of interactions to add e.g. ['Age:Fare', 'Age:Health'], or...
+ALL_INTERACTIONS = False  # Add all possible interactions
+DICT_OF_POLIES = {
+
+}  # Dict of features and degrees to add e.g. {'Age':3} (y = a + Age + Age^2 + Age^3), or...
+ALL_POLIES = 1  # Power up all features to n degree
+LIST_TO_DROP = [
+
+]  # List of variables to be dropped e.g. ['Unnamed: 0', 'col20']
+
+
+"""MODEL SETTINGS"""
+REGRESSION = True                   # Set True if you want to do regression analyses
+CLASSIFICATION = False              # Set True if you want to do classification analyses
+TARGET_NAME = ''  # The dependent/target name, if not set, will be prompted during modeling
+ALPHA = 0.05  # For confidence interval
+CV = 10  # Set to 1 to eliminate cross validation. Set to n to do LOOCV
+DISPLAY_GRAPH = False  # Set to False to stop displaying graphs
+INDIVIDUAL_FEATURE_ANALYSIS = True
+
+# Regularization settings
+PENALTY = 0  # Penalty for regularization. If set to 0, will be set automatically by sklearn
+L1_RATIO = 0.5  # Set to 1 to perform purely lasso regularization, 0 for pure ridge, and inbetween for mix of both
+
+# Quad test
+QUAD_TEST_TO_DEGREE = 3  # Degree to quad test to (regression: lowest MSE; classification: highest accuracy)
+
+# Regression settings
+
+
+# Classification settings
+LIST_OF_CLASS_WEIGHTS = []
+N_NEIGHBORS = 10  # Number of neighbors for K-nearest neighbors classifier
+
+
 # ************************************************** SETUPS ******************************************************* #
 def main(current_file_link):
-    df, not_csv_alerts = proc_import(main_file_link=current_file_link, excel_sheet_index=INDEX_SHEET,
-                                     frac=FRAC, all_feature_types=VARIABLE_TYPES)
+    df, not_csv_alerts = proc_import(main_file_link=current_file_link, 
+                                     excel_sheet_index=INDEX_SHEET,
+                                     frac=FRAC, 
+                                     all_feature_types=VARIABLE_TYPES)
     if df.empty:
         print('Empty dataframe.')
         return
@@ -112,70 +179,6 @@ def main(current_file_link):
         )
 
     print('\nEnd of program.')
-
-
-pd.set_option('display.expand_frame_repr', False)
-
-plt.rcParams.update({'font.size': 8})
-warnings.simplefilter("ignore", category=RuntimeWarning)
-warnings.simplefilter("ignore", category=FutureWarning)
-warnings.simplefilter("ignore", category=ConvergenceWarning)
-warnings.simplefilter("ignore", category=sm_except.ConvergenceWarning)
-
-
-# 1. ********************************************* GLOBAL KEYS **************************************************** #
-"""MASTER SETTINGS"""
-CURRENT_FILE_LINK = r'C:\Users\Alien\Downloads\datasets\dataset_default\default.csv'
-FRAC = 1  # OPTIMIZATION: Get sample of a fraction of the data
-VARIABLE_TYPES = {
-
-}  # OPTIMIZATION: Specify column types as a dictionary (e.g. {'a': np.float64} to reduce memory usage
-INDEX_SHEET = 0  # For excel files only. Set index of sheet to be read
-
-
-"""PRE-PROCESSING SETTINGS"""
-LIST_TO_DATETIME = [
-
-]  # List of features to be converted to datetime
-LIST_TO_STANDARDIZE = [
-
-]  # List of features to be standardized (x = (x-mean)/sigma), or...
-ALL_STANDARDIZES = False  # Standardize all possible numeric features
-LIST_OF_INTERACTIONS = [
-
-]  # List of interactions to add e.g. ['Age:Fare', 'Age:Health'], or...
-ALL_INTERACTIONS = False  # Add all possible interactions
-DICT_OF_POLIES = {
-
-}  # Dict of features and degrees to add e.g. {'Age':3} (y = a + Age + Age^2 + Age^3), or...
-ALL_POLIES = 1  # Power up all features to n degree
-LIST_TO_DROP = [
-
-]  # List of variables to be dropped e.g. ['Unnamed: 0', 'col20']
-
-
-"""MODEL SETTINGS"""
-REGRESSION = True
-CLASSIFICATION = True
-TARGET_NAME = ''  # The dependent/target name, if not set, will be prompted for modeling
-ALPHA = 0.05  # For confidence interval
-CV = 10  # Set to 1 to eliminate cross validation. Set to n to do LOOCV
-DISPLAY_GRAPH = False  # Set to False to stop displaying graphs
-INDIVIDUAL_FEATURE_ANALYSIS = True
-
-# Regularization settings
-PENALTY = 0  # Penalty for regularization. If set to 0, will be set automatically by sklearn
-L1_RATIO = 0.5  # Set to 1 to perform purely lasso regularization, 0 for pure ridge, and inbetween for mix of both
-
-# Quad test
-QUAD_TEST_TO_DEGREE = 3  # Degree to quad test to (regression: lowest MSE; classification: highest accuracy)
-
-# Regression settings
-
-
-# Classification settings
-LIST_OF_CLASS_WEIGHTS = []
-N_NEIGHBORS = 10  # Number of neighbors for K-nearest neighbors classifier
 
 
 # 2. ********************************************* ALL FUNCTIONS **************************************************** #
