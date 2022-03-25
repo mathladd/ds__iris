@@ -16,12 +16,10 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 # 1. ********************************************* GLOBAL KEYS **************************************************** #
-LINK_TO_FILE = r'C:\Users\Alien\Downloads\datasets\dataset_titanic\train.csv'
-# C:\Users\CB495EF\Downloads\self projects\data\dataset_titanic\train.csv
-# C:\Users\CB495EF\Downloads\self projects\data\dataset_momo\Mercury vol2 Q3.csv
-TARGET = 'Survived'
+LINK_TO_FILE = 'link_to_train_file.csv'
+TARGET = 'Survived'                                         # Target for prediction
 
-ALL_FEATURE_TYPES: dict = {'PassengerId': 'int64'}
+ALL_FEATURE_TYPES: dict = {'PassengerId': 'int64'}          # Custom typing for each feature
 USED_FEATURES: list = []
 ASSUME_MISSING_CHECK: bool = False
 PROC_ANALYSIS_CHECK: bool = True
@@ -40,35 +38,30 @@ STANDARDIZE_CHECK: bool = True
 
 
 # 2. ********************************************* ALL FUNCTIONS **************************************************** #
-def main():
-    # Variable declarations
-    # ------------------------------------------------------------------------------------------------------------
-    link_to_file = LINK_TO_FILE
-    all_feature_types = ALL_FEATURE_TYPES
-    used_features = USED_FEATURES
-    assume_missing_check = ASSUME_MISSING_CHECK
-    proc_analysis_check = PROC_ANALYSIS_CHECK
-    convert_all_objects_to_cat_check = CONVERT_ALL_OBJECTS_TO_CAT_CHECK
-    pre_processing_to_parquet_check = PRE_PROCESSING_TO_PARQUET_CHECK
-    post_processing_to_parquet_check = POST_PROCESSING_TO_PARQUET_CHECK
-
-    address = ADDRESS
-
-    get_dummy_categorical = GET_DUMMY_CHECK
-    standardize_numeric = STANDARDIZE_CHECK
+def main(link_to_file,
+         all_feature_types,
+         used_features,
+         assume_missing_check,
+         proc_analysis_check,
+         convert_all_objects_to_cat_check,
+         pre_processing_to_parquet_check,
+         post_processing_to_parquet_check,
+         address,
+         get_dummy_categorical,
+         standardize_numeric):
 
     # Preliminary checks and settings
     # ------------------------------------------------------------------------------------------------------------
-    link_to_folder = link_to_file.split('\\')
+    link_to_folder = link_to_file.split('/')
     file_name = link_to_folder.pop(-1)
-    link_to_folder = '\\'.join(link_to_folder) + '\\'
+    link_to_folder = '/'.join(link_to_folder) + '/'
     possible_link_to_parquet_file = f'{link_to_folder}{file_name.split(".")[0]}.parquet'
     check_existing_parquet = os.path.exists(possible_link_to_parquet_file)
     print(f'\nReading: {link_to_file}')
 
     if check_existing_parquet:
         link_to_file = possible_link_to_parquet_file
-        file_name = link_to_file.split('\\').pop(-1)
+        file_name = link_to_file.split('/').pop(-1)
         print(f'Parquet at: {possible_link_to_parquet_file}')
 
     df_test = proc_import(link_to_file=link_to_file, file_name=file_name, all_feature_types=all_feature_types,
@@ -142,7 +135,9 @@ def main():
     if proc_analysis_check:
         print('-' * 400)
         print('[PROC ANALYSIS]')
-        with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.max_colwidth', 100):
+        with pd.option_context('display.max_rows', None, 
+                               'display.max_columns', None, 
+                               'display.max_colwidth', 100):
             print(analysis_report)
             print('-' * 400)
             print('[CORRELATION MATRIX]')
@@ -218,7 +213,11 @@ def proc_process(df):
     return df, export_list
 
 
-def proc_import(link_to_file: str, file_name: str, all_feature_types: dict, assume_missing: bool, used_features: list):
+def proc_import(link_to_file: str, 
+                file_name: str, 
+                all_feature_types: dict, 
+                assume_missing: bool, 
+                used_features: list):
     # Check if all_feature_types are specified
     if not all_feature_types:
         all_feature_types = None
@@ -240,8 +239,13 @@ def proc_import(link_to_file: str, file_name: str, all_feature_types: dict, assu
     return df
 
 
-def proc_analysis(all_features: list, link_to_file: str, file_name: str, all_feature_types: dict, assume_missing: bool,
-                  convert_all_objects_to_cat: bool, client: Client):
+def proc_analysis(all_features: list, 
+                  link_to_file: str, 
+                  file_name: str, 
+                  all_feature_types: dict, 
+                  assume_missing: bool,
+                  convert_all_objects_to_cat: bool, 
+                  client: Client):
 
     feature_name_, all_reports, all_dtypes, numerical_features, category_features, object_features, date_features = \
         [], [], [], [], [], [], []
@@ -488,4 +492,15 @@ def regression():
 
 # 2. ********************************************* EXECUTIONS ******************************************************* #
 if __name__ == '__main__':
-    main()
+    main(
+    link_to_file = LINK_TO_FILE,
+    all_feature_types = ALL_FEATURE_TYPES,
+    used_features = USED_FEATURES,
+    assume_missing_check = ASSUME_MISSING_CHECK,
+    proc_analysis_check = PROC_ANALYSIS_CHECK,
+    convert_all_objects_to_cat_check = CONVERT_ALL_OBJECTS_TO_CAT_CHECK,
+    pre_processing_to_parquet_check = PRE_PROCESSING_TO_PARQUET_CHECK,
+    post_processing_to_parquet_check = POST_PROCESSING_TO_PARQUET_CHECK,
+    address = ADDRESS,
+    get_dummy_categorical = GET_DUMMY_CHECK,
+    standardize_numeric = STANDARDIZE_CHECK)
